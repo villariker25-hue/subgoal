@@ -29,6 +29,8 @@ Barra de objetivo de subs para Twitch que cuenta sola. Es para un colega de Iker
 
 El Client ID no es secreto: con el tipo «Público» no hay client secret.
 
+Al cambiar `comun.js`, sube el `?v=` de su `<script>` en panel.html y overlay.html para que OBS no use la versión en caché.
+
 ## Probar en local
 
 Configuración `twitch-subgoal` en `.claude/launch.json` (puerto 5660). Twitch solo deja entrar desde la URL registrada. En local se pueden simular subs desde la consola del panel:
