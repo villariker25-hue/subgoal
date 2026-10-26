@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sub goal · overlay</title>
+<link id="fuenteCss" rel="stylesheet" href="">
+<style>
+  :root {
+    --c1: #9146ff; --c2: #ff4fd8; --fondo: #16121f; --texto: #ffffff;
+    --k: 1; --r: 14px; --fuente: "Poppins";
+  }
+  html, body { margin: 0; background: transparent; overflow: hidden; }
+  body {
+    font-family: var(--fuente), system-ui, sans-serif; color: var(--texto);
+    /* hueco arriba para que quepa el aviso "+1 nombre" */
+    padding: calc(var(--k) * 50px) calc(var(--k) * 16px) calc(var(--k) * 14px);
+    -webkit-font-smoothing: antialiased;
+  }
+  .goal { position: relative; opacity: 0; transition: opacity .4s; }
+  .goal.listo { opacity: 1; }
+  .sombra { text-shadow: 0 2px 6px rgba(0,0,0,.55); }
+
+  .cabecera { display: flex; justify-content: space-between; align-items: baseline;
+              gap: 12px; margin-bottom: calc(var(--k) * 8px); }
+  .titulo { font-size: calc(var(--k) * 22px); font-weight: 700; letter-spacing: .3px;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cifra { font-size: calc(var(--k) * 20px); font-weight: 600; white-space: nowrap;
+           font-variant-numeric: tabular-nums; }
+  .cifra b { font-size: 1.25em; }
+  .cifra i { font-style: normal; opacity: .75; margin-left: .4em; font-size: .8em; }
+
+  .barra { position: relative; height: calc(var(--k) * 26px); border-radius: var(--r);
+           background: var(--fondo); overflow: hidden;
+           box-shadow: inset 0 0 0 2px rgba(255,255,255,.08), 0 4px 18px rgba(0,0,0,.35); }
+  .relleno { position: absolute; inset: 0 auto 0 0; width: 0%;
+             border-radius: var(--r);
+             background: linear-gradient(90deg, var(--c1), var(--c2));
+             box-shadow: 0 0 18px color-mix(in srgb, var(--c2) 60%, transparent);
+             transition: width 1.1s cubic-bezier(.2,.9,.25,1); overflow: hidden; }
+  .relleno::after { content: ""; position: absolute; inset: 0;
+             background: linear-gradient(110deg, transparent 30%, rgba(255,255,255,.35) 50%, transparent 70%);
+             transform: translateX(-100%); animation: brillo 3.2s ease-in-out infinite; }
+  @keyframes brillo { 60%, 100% { transform: translateX(100%); } }
+
+  .ultimo { margin-top: calc(var(--k) * 7px); font-size: calc(var(--k) * 14px); opacity: .85;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ultimo:empty { display: none; }
+
+  /* Estilo pastilla: todo dentro de la barra */
+  .pastilla .cabecera { position: absolute; inset: 0; z-index: 2; margin: 0;
+                        align-items: center; padding: 0 calc(var(--k) * 18px); }
+  .pastilla .barra { height: calc(var(--k) * 52px); border-radius: calc(var(--r) * 2.2); }
+  .pastilla .relleno { border-radius: calc(var(--r) * 2.2); }
+  .pastilla .titulo { font-size: calc(var(--k) * 20px); }
+  .pastilla .cifra { font-size: calc(var(--k) * 18px); }
+  .pastilla .ultimo { text-align: center; }
+
+  /* Golpe al entrar un sub */
+  .golpe .barra { animation: golpe .6s ease; }
+  @keyframes golpe { 30% { transform: scale(1.035); filter: brightness(1.35); } }
+
+  .aviso { position: absolute; right: 0; top: 0; z-index: 5;
+           font-size: calc(var(--k) * 18px); font-weight: 700;
+           padding: calc(var(--k) * 5px) calc(var(--k) * 12px); border-radius: 999px;
+           background: linear-gradient(90deg, var(--c1), var(--c2)); color: #fff;
+           box-shadow: 0 6px 20px rgba(0,0,0,.4); white-space: nowrap;
+           animation: aviso 3.2s ease forwards; pointer-events: none; }
+  @keyframes aviso {
+    0%   { opacity: 0; transform: translateY(10px) scale(.8); }
+    12%  { opacity: 1; transform: translateY(-115%) scale(1.06); }
+    20%  { transform: translateY(-110%) scale(1); }
+    80%  { opacity: 1; transform: translateY(-110%); }
+    100% { opacity: 0; transform: translateY(-150%); }
+  }
+
+  #confeti { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 9; }
+  .error { font: 600 15px system-ui, sans-serif; color: #fff; background: #b3261e;
+           padding: 10px 14px; border-radius: 10px; display: inline-block; }
+</style>
+</head>
+<body>
+<div class="goal" id="goal">
+  <div class="cabecera sombra">
+    <span class="titulo" id="titulo"></span>
+    <span class="cifra"><b id="num">0</b> / <span id="meta">0</span><i id="pct"></i></span>
+  </div>
+  <div class="barra"><div class="relleno" id="relleno"></div></div>
+  <div class="ultimo sombra" id="ultimo"></div>
+</div>
+<canvas id="confeti"></canvas>
+
+<script src="comun.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const codigo = codigoDeUrl();
+
+let mostrado = null;          // número que se ve ahora mismo (para animarlo)
+let eventosVistos = null;     // ids ya conocidos: los nuevos lanzan el aviso
+let ultimaPrueba = null;
+let fuenteActual = "";
+let metaAlcanzada = null;
+
+function cargarFuente(nombre) {
+  if (nombre === fuenteActual) return;
+  fuenteActual = nombre;
+  $("fuenteCss").href = "https://fonts.googleapis.com/css2?family=" +
+    encodeURIComponent(nombre) + ":wght@400;600;700&display=swap";
+}
+
+function animarNumero(hasta) {
+  if (mostrado === null) { mostrado = hasta; $("num").textContent = hasta; return; }
+  const desde = mostrado, t0 = performance.now(), dur = 900;
+  mostrado = hasta;
+  (function paso(t) {
+    const p = Math.min(1, (t - t0) / dur), e = 1 - Math.pow(1 - p, 3);
+    $("num").textContent = Math.round(desde + (hasta - desde) * e);
+    if (p < 1) requestAnimationFrame(paso);
+  })(t0);
+}
+
+function aviso(texto) {
+  const el = document.createElement("div");
+  el.className = "aviso";
+  el.textContent = texto;
+  $("goal").appendChild(el);
+  setTimeout(() => el.remove(), 3300);
+  $("goal").classList.remove("golpe");
+  void $("goal").offsetWidth;
+  $("goal").classList.add("golpe");
+}
+
+function textoEvento(ev, cfg) {
+  const n = valorEvento(ev, cfg);
+  const quien = ev.u || "Anónimo";
+  if (ev.tipo === "regalo") return `+${n} 🎁 ${quien}`;
+  if (ev.tipo === "resub") return `+${n} ${quien} (${ev.meses || "?"} meses)`;
+  return `+${n} ${quien}`;
+}
+
+function pintar(estado) {
+  const cfg = Object.assign({}, CFG_DEFECTO, estado.cfg);
+  const raiz = document.documentElement.style;
+  raiz.setProperty("--c1", cfg.c1);
+  raiz.setProperty("--c2", cfg.c2);
+  raiz.setProperty("--fondo", cfg.fondo);
+  raiz.setProperty("--texto", cfg.texto);
+  raiz.setProperty("--k", (cfg.escala || 100) / 100);
+  raiz.setProperty("--r", (cfg.redondeo ?? 14) + "px");
+  raiz.setProperty("--fuente", `"${cfg.fuente}"`);
+  cargarFuente(cfg.fuente);
+
+  const goal = $("goal");
+  goal.classList.toggle("pastilla", cfg.estilo === "pastilla");
+
+  const n = Math.max(0, contar(estado));
+  const meta = Math.max(1, cfg.meta || 1);
+  const pct = Math.min(100, n / meta * 100);
+  $("titulo").textContent = cfg.titulo;
+  $("meta").textContent = meta;
+  $("pct").textContent = cfg.mostrarPct ? Math.floor(pct) + "%" : "";
+  $("relleno").style.width = pct + "%";
+  animarNumero(n);
+
+  const lista = ultimosEventos(estado, 1);
+  $("ultimo").textContent = cfg.mostrarUltimo && lista.length
+    ? (lista[0].tipo === "regalo" ? "Último regalo: " : "Último sub: ") + (lista[0].u || "Anónimo")
+    : "";
+
+  // Avisos de subs nuevos (los que ya estaban al cargar no se anuncian)
+  const ids = Object.keys(estado.eventos || {});
+  if (eventosVistos) {
+    for (const ev of ultimosEventos(estado, 50).reverse())
+      if (!eventosVistos.has(ev.id) && valorEvento(ev, cfg) > 0) aviso(textoEvento(ev, cfg));
+  }
+  eventosVistos = new Set(ids);
+
+  const prueba = estado.prueba && estado.prueba.t;
+  if (ultimaPrueba !== null && prueba && prueba !== ultimaPrueba) {
+    aviso("+1 " + (estado.prueba.u || "Prueba"));
+    if (cfg.celebrar && estado.prueba.fiesta) confeti();
+  }
+  ultimaPrueba = prueba || 0;
+
+  // Celebración al cruzar la meta (no al cargar si ya estaba cumplida)
+  const cumplida = n >= meta;
+  if (metaAlcanzada === false && cumplida && cfg.celebrar) confeti();
+  metaAlcanzada = cumplida;
+
+  goal.classList.add("listo");
+}
+
+// ── Confeti ──
+function confeti() {
+  const cv = $("confeti"), cx = cv.getContext("2d");
+  cv.width = innerWidth; cv.height = innerHeight;
+  const cs = getComputedStyle(document.documentElement);
+  const colores = [cs.getPropertyValue("--c1"), cs.getPropertyValue("--c2"), "#ffd84d", "#ffffff"];
+  const piezas = Array.from({ length: 160 }, () => ({
+    x: Math.random() * cv.width, y: -20 - Math.random() * cv.height * .6,
+    vx: (Math.random() - .5) * 3, vy: 2 + Math.random() * 3.5,
+    r: Math.random() * Math.PI, vr: (Math.random() - .5) * .3,
+    w: 6 + Math.random() * 6, h: 4 + Math.random() * 4,
+    c: colores[Math.floor(Math.random() * colores.length)].trim(),
+  }));
+  const t0 = performance.now();
+  (function paso(t) {
+    cx.clearRect(0, 0, cv.width, cv.height);
+    for (const p of piezas) {
+      p.x += p.vx; p.y += p.vy; p.r += p.vr;
+      cx.save(); cx.translate(p.x, p.y); cx.rotate(p.r);
+      cx.fillStyle = p.c; cx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h); cx.restore();
+    }
+    if (t - t0 < 5000) requestAnimationFrame(paso);
+    else cx.clearRect(0, 0, cv.width, cv.height);
+  })(t0);
+}
+
+if (!codigo) {
+  document.body.innerHTML = '<div class="error">Falta el código del overlay: copia la URL desde el panel.</div>';
+} else {
+  escuchar(codigo, pintar);
+}
+</script>
+</body>
+</html>

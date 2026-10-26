@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sub goal para OBS</title>
+<style>
+  :root { --bg: #0f0e13; --tarjeta: #1a1822; --borde: #2c2938; --texto: #ece9f5; --suave: #a19cb2; --acento: #9146ff; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--texto); font: 16px/1.6 system-ui, "Segoe UI", sans-serif; }
+  main { max-width: 680px; margin: 0 auto; padding: 32px 16px 48px; }
+  h1 { font-size: 28px; margin: 0 0 6px; }
+  .sub { color: var(--suave); margin: 0 0 24px; }
+  ol { padding: 0; margin: 0; list-style: none; counter-reset: paso; display: grid; gap: 12px; }
+  li { counter-increment: paso; background: var(--tarjeta); border: 1px solid var(--borde);
+       border-radius: 14px; padding: 14px 16px 14px 56px; position: relative; }
+  li::before { content: counter(paso); position: absolute; left: 14px; top: 14px; width: 28px; height: 28px;
+               border-radius: 50%; background: var(--acento); color: #fff; font-weight: 700;
+               display: grid; place-items: center; font-size: 15px; }
+  li b { display: block; margin-bottom: 2px; }
+  li p { margin: 4px 0 0; color: var(--suave); font-size: 14.5px; }
+  kbd { background: #2a2636; border-radius: 5px; padding: 1px 6px; font-size: 13px; color: var(--texto); }
+  .boton { display: inline-block; margin: 26px 0 8px; background: var(--acento); color: #fff; text-decoration: none;
+           font-weight: 700; padding: 12px 20px; border-radius: 10px; }
+  .nota { color: var(--suave); font-size: 14px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>🎯 Sub goal para OBS</h1>
+  <p class="sub">Barra de objetivo de subs que se actualiza sola cuando alguien se suscribe. Se configura entera desde un panel dentro de OBS.</p>
+
+  <ol>
+    <li><b>Abre el panel</b>
+      <p>Pulsa el botón de abajo. Se crea tu panel con un código propio en la URL.</p></li>
+    <li><b>Mételo en OBS como dock</b>
+      <p>En OBS: <kbd>Docks</kbd> → <kbd>Docks de navegador personalizados…</kbd>. Ponle de nombre «Sub goal» y pega la
+        <b style="display:inline">URL de este panel</b> (la copias desde el propio panel, apartado «Overlay para OBS»).</p></li>
+    <li><b>Conecta tu Twitch</b>
+      <p>En el dock, «Conectar con Twitch» y entra con la cuenta del canal. Solo pide permiso para leer los subs.</p></li>
+    <li><b>Añade el overlay a la escena</b>
+      <p>En la escena: <kbd>+</kbd> → <kbd>Navegador</kbd>. Pega la <b style="display:inline">URL del overlay</b>, ancho 800 y alto 200. Colócalo donde quieras.</p></li>
+    <li><b>Personalízalo</b>
+      <p>Desde el dock cambias el título, la meta, los colores, la fuente y el tamaño, y lo ves al momento. Con «Probar aviso de sub» compruebas la animación sin tocar la cuenta.</p></li>
+  </ol>
+
+  <a class="boton" href="panel.html">Abrir mi panel</a>
+  <p class="nota">Los subs solo se cuentan mientras el dock está abierto, o sea, con OBS abierto. Si se escapa alguno, en el panel tienes los botones + y −.</p>
+</main>
+</body>
+</html>

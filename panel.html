@@ -1,0 +1,487 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sub goal · panel</title>
+<style>
+  :root {
+    --bg: #0f0e13; --tarjeta: #1a1822; --borde: #2c2938; --texto: #ece9f5;
+    --suave: #9a95ab; --acento: #9146ff; --ok: #3ccf7a; --mal: #ff5c6c; --aviso: #ffb547;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--texto);
+         font: 14px/1.45 system-ui, "Segoe UI", sans-serif; }
+  main { max-width: 560px; margin: 0 auto; padding: 12px; display: grid; gap: 10px; }
+  h1 { font-size: 16px; margin: 2px 0; display: flex; align-items: center; gap: 8px; }
+  details, .tarjeta { background: var(--tarjeta); border: 1px solid var(--borde); border-radius: 12px; }
+  .tarjeta { padding: 12px; }
+  summary { padding: 11px 12px; cursor: pointer; font-weight: 600; list-style: none;
+            display: flex; justify-content: space-between; }
+  summary::after { content: "▾"; color: var(--suave); }
+  details:not([open]) summary::after { content: "▸"; }
+  details > div { padding: 0 12px 12px; display: grid; gap: 10px; }
+  label { display: grid; gap: 4px; color: var(--suave); font-size: 12.5px; }
+  .fila { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .fila > * { flex: 1 1 0; min-width: 0; }
+  .check { display: flex; align-items: center; gap: 8px; color: var(--texto); font-size: 13.5px; }
+  .check input { width: 17px; height: 17px; accent-color: var(--acento); flex: none; }
+  input[type=text], input[type=number], select {
+    width: 100%; background: #0c0b10; color: var(--texto); border: 1px solid var(--borde);
+    border-radius: 8px; padding: 8px 9px; font: inherit; }
+  input[type=color] { width: 100%; height: 36px; padding: 2px; background: #0c0b10;
+                      border: 1px solid var(--borde); border-radius: 8px; }
+  input[type=range] { width: 100%; accent-color: var(--acento); }
+  button { font: inherit; font-weight: 600; border: 0; border-radius: 8px; padding: 9px 12px;
+           background: #2a2636; color: var(--texto); cursor: pointer; }
+  button:hover { filter: brightness(1.2); }
+  button.prim { background: var(--acento); color: #fff; }
+  button.peligro { background: transparent; border: 1px solid #5a2830; color: var(--mal); }
+  .ayuda { color: var(--suave); font-size: 12.5px; margin: 0; }
+  .estado { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+  .punto { width: 9px; height: 9px; border-radius: 50%; background: var(--suave); flex: none; }
+  .punto.ok { background: var(--ok); box-shadow: 0 0 8px var(--ok); }
+  .punto.mal { background: var(--mal); }
+  .punto.aviso { background: var(--aviso); }
+
+  .contador { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .grande { font-size: 40px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1; }
+  .grande small { font-size: 18px; color: var(--suave); font-weight: 600; }
+  .masmenos { display: flex; gap: 6px; }
+  .masmenos button { width: 46px; height: 46px; font-size: 20px; padding: 0; }
+
+  .vista { border-radius: 10px; overflow: hidden; border: 1px solid var(--borde);
+           background: repeating-conic-gradient(#1d1b24 0 25%, #15141b 0 50%) 0 0 / 18px 18px; }
+  .vista iframe { display: block; width: 100%; height: 130px; border: 0; }
+  .url { display: flex; gap: 6px; }
+  .url input { font-size: 12px; color: var(--suave); }
+  .url button { flex: none; }
+
+  #actividad { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+  #actividad li { display: flex; gap: 8px; align-items: center; font-size: 13px;
+                  background: #0c0b10; border-radius: 8px; padding: 6px 8px; }
+  #actividad li span:first-child { color: var(--suave); font-variant-numeric: tabular-nums; flex: none; }
+  #actividad li b { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #actividad li button { padding: 2px 8px; background: transparent; color: var(--suave); }
+  .alerta { border-radius: 10px; padding: 10px 12px; font-size: 13px;
+            background: #3a2a10; border: 1px solid #6b4d1a; color: #ffd9a0; }
+  .alerta.mal { background: #3a1419; border-color: #6b2630; color: #ffc2c8; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <h1>🎯 Sub goal <span class="estado" style="margin-left:auto"><i class="punto" id="ptoNube"></i><span id="txtNube">Conectando…</span></span></h1>
+
+  <div class="alerta mal" id="sinClientId" hidden>
+    Falta el Client ID de Twitch en <code>comun.js</code>. Mira el LEEME.md.
+  </div>
+
+  <!-- Twitch -->
+  <section class="tarjeta" style="display:grid;gap:8px">
+    <div class="fila" style="justify-content:space-between">
+      <span class="estado" style="flex:none"><i class="punto" id="ptoTw"></i><span id="txtTw">Sin conectar a Twitch</span></span>
+      <button class="prim" id="btnLogin" style="flex:none">Conectar con Twitch</button>
+      <button id="btnLogout" style="flex:none" hidden>Desconectar</button>
+    </div>
+    <p class="ayuda" id="ayudaTw">Entra con la cuenta del canal: los subs se cuentan solos mientras este panel esté abierto.</p>
+  </section>
+
+  <!-- Contador -->
+  <section class="tarjeta" style="display:grid;gap:10px">
+    <div class="contador">
+      <div class="grande"><span id="num">0</span> <small>/ <span id="metaTxt">0</span></small></div>
+      <div class="masmenos">
+        <button id="menos" title="Quitar uno">−</button>
+        <button id="mas" title="Sumar uno">+</button>
+      </div>
+    </div>
+    <div class="fila">
+      <input type="number" id="fijarValor" placeholder="Poner el contador a…">
+      <button id="btnFijar" style="flex:none">Fijar</button>
+      <button class="peligro" id="btnReset" style="flex:none">Reiniciar</button>
+    </div>
+  </section>
+
+  <!-- Meta -->
+  <details open>
+    <summary>Meta</summary>
+    <div>
+      <label>Título <input type="text" data-cfg="titulo" maxlength="60"></label>
+      <div class="fila">
+        <label>Objetivo <input type="number" data-cfg="meta" min="1"></label>
+        <label>Al llegar, subir la meta en <input type="number" data-cfg="autoSubir" min="0" placeholder="0 = no"></label>
+      </div>
+      <label class="check"><input type="checkbox" data-cfg="celebrar"> Confeti al llegar a la meta</label>
+    </div>
+  </details>
+
+  <!-- Qué cuenta -->
+  <details>
+    <summary>Qué se cuenta</summary>
+    <div>
+      <label>Modo
+        <select data-cfg="modo">
+          <option value="sesion">Subs de este stream (empieza en 0)</option>
+          <option value="total">Subs totales del canal (los de Twitch)</option>
+        </select>
+      </label>
+      <p class="ayuda" id="ayudaModo"></p>
+      <label class="check"><input type="checkbox" data-cfg="contarResubs"> Contar resubs (cuando el viewer comparte su resub)</label>
+      <label class="check"><input type="checkbox" data-cfg="contarRegalos"> Contar subs regalados</label>
+      <label class="check"><input type="checkbox" data-cfg="puntos"> Contar por puntos (Tier 2 = 2, Tier 3 = 6)</label>
+    </div>
+  </details>
+
+  <!-- Diseño -->
+  <details>
+    <summary>Diseño</summary>
+    <div>
+      <div class="fila">
+        <label>Estilo
+          <select data-cfg="estilo">
+            <option value="barra">Barra con título encima</option>
+            <option value="pastilla">Pastilla (todo dentro)</option>
+          </select>
+        </label>
+        <label>Fuente <select data-cfg="fuente" id="selFuente"></select></label>
+      </div>
+      <div class="fila">
+        <label>Color 1 <input type="color" data-cfg="c1"></label>
+        <label>Color 2 <input type="color" data-cfg="c2"></label>
+        <label>Fondo barra <input type="color" data-cfg="fondo"></label>
+        <label>Texto <input type="color" data-cfg="texto"></label>
+      </div>
+      <label>Tamaño <span id="escalaTxt"></span><input type="range" data-cfg="escala" min="50" max="200" step="5"></label>
+      <label>Esquinas <span id="redondeoTxt"></span><input type="range" data-cfg="redondeo" min="0" max="26"></label>
+      <label class="check"><input type="checkbox" data-cfg="mostrarUltimo"> Mostrar el último sub</label>
+      <label class="check"><input type="checkbox" data-cfg="mostrarPct"> Mostrar porcentaje</label>
+    </div>
+  </details>
+
+  <!-- Overlay -->
+  <details open>
+    <summary>Overlay para OBS</summary>
+    <div>
+      <div class="vista"><iframe id="vista" title="Vista previa del overlay"></iframe></div>
+      <div class="fila">
+        <button id="btnPrueba">Probar aviso de sub</button>
+        <button id="btnFiesta">Probar celebración</button>
+      </div>
+      <label>URL del overlay (Fuente → Navegador, 800 × 200)
+        <span class="url"><input type="text" id="urlOverlay" readonly><button data-copiar="urlOverlay">Copiar</button></span>
+      </label>
+      <label>URL de este panel (Docks → Docks de navegador personalizados)
+        <span class="url"><input type="text" id="urlPanel" readonly><button data-copiar="urlPanel">Copiar</button></span>
+      </label>
+      <p class="ayuda">Guarda estas dos URLs: el código del final es lo que une el panel con el overlay.</p>
+    </div>
+  </details>
+
+  <!-- Actividad -->
+  <details open>
+    <summary>Últimos subs</summary>
+    <div>
+      <ul id="actividad"></ul>
+      <p class="ayuda" id="sinActividad">Todavía no ha entrado ningún sub.</p>
+    </div>
+  </details>
+</main>
+
+<script src="comun.js"></script>
+<script>
+const $ = id => document.getElementById(id);
+const TW_SCOPE = "channel:read:subscriptions";
+const URL_PANEL = urlBase() + "panel.html";
+
+// ── Código del apartado y vuelta del login de Twitch ──
+const hash = new URLSearchParams(location.hash.slice(1));
+let codigo = codigoDeUrl();
+if (hash.get("access_token")) {
+  const esperado = sessionStorage.getItem("subgoal_estado");
+  const cod = (hash.get("state") || "").split(".")[0];
+  if (esperado && esperado === hash.get("state")) {
+    localStorage.setItem("subgoal_tw", JSON.stringify({ token: hash.get("access_token") }));
+    codigo = cod;
+  }
+  sessionStorage.removeItem("subgoal_estado");
+}
+codigo = codigo || localStorage.getItem("subgoal_codigo") || codigoNuevo();
+localStorage.setItem("subgoal_codigo", codigo);
+history.replaceState(null, "", URL_PANEL + "?c=" + codigo);
+
+$("urlOverlay").value = urlBase() + "overlay.html?c=" + codigo;
+$("urlPanel").value = URL_PANEL + "?c=" + codigo;
+$("vista").src = $("urlOverlay").value;
+for (const f of FUENTES) $("selFuente").add(new Option(f, f));
+if (TWITCH_CLIENT_ID.startsWith("PON_AQUI")) $("sinClientId").hidden = false;
+
+// ── Estado compartido (Firebase) ──
+let estado = {};
+let cargado = false;
+const cfg = () => Object.assign({}, CFG_DEFECTO, estado.cfg);
+
+escuchar(codigo, nuevo => {
+  estado = nuevo;
+  if (!cargado) {
+    cargado = true;
+    if (!estado.cfg) nube(codigo, "PATCH", "", { cfg: CFG_DEFECTO });
+  }
+  pintar();
+  subirMetaSiToca();
+}, ok => {
+  $("ptoNube").className = "punto " + (ok ? "ok" : "mal");
+  $("txtNube").textContent = ok ? "Sincronizado" : "Sin conexión…";
+});
+
+function guardar(cambios) {
+  nube(codigo, "PATCH", "", cambios).catch(() => {
+    $("txtNube").textContent = "No se pudo guardar";
+    $("ptoNube").className = "punto mal";
+  });
+}
+
+function pintar() {
+  const c = cfg();
+  $("num").textContent = Math.max(0, contar(estado));
+  $("metaTxt").textContent = c.meta;
+  for (const el of document.querySelectorAll("[data-cfg]")) {
+    if (el === document.activeElement) continue;
+    const v = c[el.dataset.cfg];
+    if (el.type === "checkbox") el.checked = !!v; else el.value = v;
+  }
+  $("escalaTxt").textContent = c.escala + "%";
+  $("redondeoTxt").textContent = c.redondeo + " px";
+  $("ayudaModo").textContent = c.modo === "total"
+    ? "Muestra el número de suscriptores que Twitch dice que tiene el canal (incluye al propio streamer). Se actualiza cada 30 s y al entrar un sub."
+    : "Empieza en 0 y suma cada sub que entra mientras el panel está abierto. Usa «Reiniciar» al empezar cada stream.";
+
+  const lista = ultimosEventos(estado, 12);
+  $("sinActividad").hidden = lista.length > 0;
+  $("actividad").replaceChildren(...lista.map(ev => {
+    const li = document.createElement("li");
+    const hora = new Date(ev.t).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" });
+    const tipo = { sub: "sub", resub: `resub ${ev.meses || ""}m`, regalo: `regala ${ev.cant}` }[ev.tipo] || ev.tipo;
+    const tier = ev.tier && ev.tier !== "1000" ? ` · T${ev.tier[0]}` : "";
+    li.innerHTML = `<span>${hora}</span><b></b><span>${tipo}${tier} · +${valorEvento(ev, c)}</span><button title="Quitar de la cuenta">×</button>`;
+    li.querySelector("b").textContent = ev.u || "Anónimo";
+    li.querySelector("button").onclick = () => {
+      if (confirm(`¿Quitar el sub de ${ev.u || "Anónimo"} de la cuenta?`)) guardar({ ["eventos/" + ev.id]: null });
+    };
+    return li;
+  }));
+}
+
+// Controles de configuración → Firebase
+let esperaTexto = {};
+for (const el of document.querySelectorAll("[data-cfg]")) {
+  const clave = el.dataset.cfg;
+  const leer = () => el.type === "checkbox" ? el.checked
+                   : el.type === "number" || el.type === "range" ? Number(el.value) || 0
+                   : el.value;
+  const enviar = () => guardar({ ["cfg/" + clave]: clave === "meta" ? Math.max(1, leer()) : leer() });
+  el.addEventListener("change", enviar);
+  el.addEventListener("input", () => {
+    if (el.type === "checkbox" || el.tagName === "SELECT") return;
+    clearTimeout(esperaTexto[clave]);
+    esperaTexto[clave] = setTimeout(enviar, 250);
+  });
+}
+
+// Contador manual
+function ajustar(d) { guardar({ ajuste: (estado.ajuste || 0) + d }); }
+$("mas").onclick = () => ajustar(1);
+$("menos").onclick = () => ajustar(-1);
+$("btnFijar").onclick = () => {
+  const v = parseInt($("fijarValor").value, 10);
+  if (isNaN(v)) return;
+  guardar({ ajuste: v - contarBase(estado) });
+  $("fijarValor").value = "";
+};
+$("btnReset").onclick = () => {
+  if (!confirm("¿Poner el contador a 0? Se borra la lista de subs de este stream.")) return;
+  const total = cfg().modo === "total";
+  guardar({ eventos: null, ajuste: total ? -contarBase(estado) : 0 });
+};
+
+// La meta sube sola si está activado. El valor depende solo del contador,
+// así que si hay dos paneles abiertos escriben lo mismo.
+function subirMetaSiToca() {
+  const c = cfg(), n = contar(estado);
+  if (!(c.autoSubir > 0) || n < c.meta) return;
+  const nueva = c.meta + c.autoSubir * (Math.floor((n - c.meta) / c.autoSubir) + 1);
+  setTimeout(() => guardar({ "cfg/meta": nueva }), 2500);   // deja ver el confeti
+}
+
+$("btnPrueba").onclick = () => guardar({ prueba: { t: Date.now(), u: "Viewer de prueba" } });
+$("btnFiesta").onclick = () => guardar({ prueba: { t: Date.now(), u: "¡Meta conseguida!", fiesta: true } });
+for (const b of document.querySelectorAll("[data-copiar]")) {
+  b.onclick = async () => {
+    const campo = $(b.dataset.copiar);
+    try { await navigator.clipboard.writeText(campo.value); }
+    catch { campo.select(); document.execCommand("copy"); }
+    b.textContent = "¡Copiada!";
+    setTimeout(() => b.textContent = "Copiar", 1500);
+  };
+}
+
+// ── Twitch ──
+let tw = JSON.parse(localStorage.getItem("subgoal_tw") || "null");
+let ws = null, wsCerrarAdrede = false, vigilante = null, reintento = 0;
+
+function estadoTw(clase, texto, ayuda) {
+  $("ptoTw").className = "punto " + clase;
+  $("txtTw").textContent = texto;
+  if (ayuda !== undefined) $("ayudaTw").textContent = ayuda;
+  $("btnLogin").hidden = !!tw;
+  $("btnLogout").hidden = !tw;
+}
+
+$("btnLogin").onclick = () => {
+  const estadoOauth = codigo + "." + codigoNuevo();
+  sessionStorage.setItem("subgoal_estado", estadoOauth);
+  location.href = "https://id.twitch.tv/oauth2/authorize?" + new URLSearchParams({
+    client_id: TWITCH_CLIENT_ID, redirect_uri: URL_PANEL, response_type: "token",
+    scope: TW_SCOPE, state: estadoOauth, force_verify: "true",
+  });
+};
+$("btnLogout").onclick = () => {
+  if (!confirm("¿Desconectar Twitch? Los subs dejarán de contarse solos.")) return;
+  if (tw) fetch("https://id.twitch.tv/oauth2/revoke", { method: "POST",
+    body: new URLSearchParams({ client_id: TWITCH_CLIENT_ID, token: tw.token }) }).catch(() => {});
+  cerrarSesionTw("Sin conectar a Twitch");
+};
+
+function cerrarSesionTw(texto, ayuda) {
+  tw = null;
+  localStorage.removeItem("subgoal_tw");
+  wsCerrarAdrede = true;
+  if (ws) ws.close();
+  estadoTw(texto === "Sin conectar a Twitch" ? "" : "mal", texto,
+           ayuda || "Entra con la cuenta del canal: los subs se cuentan solos mientras este panel esté abierto.");
+}
+
+async function helix(ruta, opciones = {}) {
+  const r = await fetch("https://api.twitch.tv/helix/" + ruta, Object.assign({}, opciones, {
+    headers: { "Authorization": "Bearer " + tw.token, "Client-Id": TWITCH_CLIENT_ID,
+               "Content-Type": "application/json" },
+  }));
+  if (r.status === 401) { cerrarSesionTw("Sesión de Twitch caducada", "Vuelve a darle a «Conectar con Twitch»."); throw new Error("401"); }
+  const datos = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(datos.message || "Twitch " + r.status);
+  return datos;
+}
+
+async function validar() {
+  if (!tw) return false;
+  const r = await fetch("https://id.twitch.tv/oauth2/validate", { headers: { Authorization: "OAuth " + tw.token } });
+  if (!r.ok) { cerrarSesionTw("Sesión de Twitch caducada", "Vuelve a darle a «Conectar con Twitch»."); return false; }
+  const v = await r.json();
+  if (!(v.scopes || []).includes(TW_SCOPE)) { cerrarSesionTw("Faltan permisos", "Vuelve a conectar y acepta los permisos."); return false; }
+  tw = Object.assign(tw, { id: v.user_id, login: v.login });
+  localStorage.setItem("subgoal_tw", JSON.stringify(tw));
+  return true;
+}
+
+async function refrescarTotal() {
+  if (!tw || !tw.id) return;
+  try {
+    const d = await helix("subscriptions?first=1&broadcaster_id=" + tw.id);
+    const t = estado.total || {};
+    if (t.subs !== d.total || t.puntos !== d.points)
+      guardar({ total: { subs: d.total, puntos: d.points, t: Date.now() } });
+  } catch (e) { /* sin permiso o sin afiliado: el modo sesión sigue funcionando */ }
+}
+
+function conectarEventSub(url = "wss://eventsub.wss.twitch.tv/ws", esReconexion = false) {
+  wsCerrarAdrede = false;
+  const nuevo = new WebSocket(url);
+  let keepalive = 30;
+
+  function vigilar() {
+    clearTimeout(vigilante);
+    vigilante = setTimeout(() => nuevo.close(), (keepalive + 10) * 1000);
+  }
+
+  nuevo.onmessage = async e => {
+    const m = JSON.parse(e.data), tipo = m.metadata.message_type;
+    vigilar();
+    if (tipo === "session_welcome") {
+      keepalive = m.payload.session.keepalive_timeout_seconds || 30;
+      vigilar();
+      const viejo = ws;
+      ws = nuevo;
+      if (esReconexion) {
+        // Twitch mueve las suscripciones solo: retiramos la conexión vieja.
+        if (viejo && viejo !== nuevo) { viejo.retirado = true; viejo.close(); }
+      } else await suscribir(m.payload.session.id);
+      reintento = 0;
+    } else if (tipo === "notification") {
+      registrar(m.metadata.message_id, m.metadata.subscription_type, m.payload.event, m.metadata.message_timestamp);
+    } else if (tipo === "session_reconnect") {
+      conectarEventSub(m.payload.session.reconnect_url, true);
+    } else if (tipo === "revocation") {
+      estadoTw("mal", "Twitch ha cortado el permiso", "Vuelve a darle a «Conectar con Twitch».");
+    }
+  };
+  nuevo.onclose = () => {
+    if (nuevo.retirado) return;                // era la vieja de una reconexión
+    if (esReconexion && nuevo !== ws) return;  // la vieja sigue viva y la vigila su propio onclose
+    clearTimeout(vigilante);
+    if (wsCerrarAdrede || !tw) return;
+    estadoTw("aviso", "Reconectando con Twitch…");
+    reintento = Math.min(reintento + 1, 6);
+    setTimeout(() => conectarEventSub(), 1000 * 2 ** reintento);
+  };
+  if (!esReconexion) ws = nuevo;
+}
+
+async function suscribir(sesion) {
+  const tipos = ["channel.subscribe", "channel.subscription.message", "channel.subscription.gift"];
+  try {
+    for (const type of tipos) {
+      await helix("eventsub/subscriptions", { method: "POST", body: JSON.stringify({
+        type, version: "1", condition: { broadcaster_user_id: tw.id },
+        transport: { method: "websocket", session_id: sesion },
+      }) });
+    }
+    estadoTw("ok", "Contando subs de " + tw.login,
+             "Deja este panel abierto (como dock de OBS) para que los subs se sumen solos.");
+    refrescarTotal();
+  } catch (e) {
+    if (!tw) return;
+    estadoTw("mal", "Twitch no deja escuchar los subs",
+             "Motivo: " + e.message + ". Hay que entrar con la cuenta del propio canal (afiliado o partner).");
+  }
+}
+
+function registrar(id, tipo, ev, cuando) {
+  let dato;
+  if (tipo === "channel.subscribe") {
+    if (ev.is_gift) return;                    // ya cuenta en el evento de regalo
+    dato = { tipo: "sub", u: ev.user_name, tier: ev.tier, cant: 1 };
+  } else if (tipo === "channel.subscription.message") {
+    dato = { tipo: "resub", u: ev.user_name, tier: ev.tier, cant: 1, meses: ev.cumulative_months || 0 };
+  } else if (tipo === "channel.subscription.gift") {
+    dato = { tipo: "regalo", u: ev.is_anonymous ? "Anónimo" : ev.user_name, tier: ev.tier, cant: ev.total || 1 };
+  } else return;
+  dato.t = Date.parse(cuando) || Date.now();
+  // El id del mensaje de Twitch es la clave: si hay dos paneles abiertos,
+  // escriben el mismo registro y no se cuenta doble.
+  guardar({ ["eventos/" + id]: dato });
+  setTimeout(refrescarTotal, 4000);
+}
+
+(async () => {
+  if (!tw) return estadoTw("", "Sin conectar a Twitch");
+  estadoTw("aviso", "Comprobando sesión de Twitch…");
+  if (!await validar()) return;
+  conectarEventSub();
+  setInterval(refrescarTotal, 30000);
+  setInterval(validar, 60 * 60 * 1000);       // Twitch pide validar cada hora
+})();
+
+window.__subgoal = { registrar, get estado() { return estado; } };
+</script>
+</body>
+</html>
