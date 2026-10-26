@@ -101,6 +101,10 @@
       <button id="btnFijar" style="flex:none">Fijar</button>
       <button class="peligro" id="btnReset" style="flex:none">Reiniciar</button>
     </div>
+    <div class="alerta" id="manual" hidden style="display:flex;gap:10px;align-items:center">
+      <span style="flex:1" id="manualTxt"></span>
+      <button id="btnQuitarManual" style="flex:none">Quitar</button>
+    </div>
   </section>
 
   <!-- Meta -->
@@ -245,6 +249,10 @@ function pintar() {
   const c = cfg();
   $("num").textContent = Math.max(0, contar(estado));
   $("metaTxt").textContent = c.meta;
+  const aMano = estado.ajuste || 0;
+  $("manual").hidden = aMano === 0;
+  $("manualTxt").textContent = `Incluye ${aMano > 0 ? "+" + aMano : aMano} puesto${Math.abs(aMano) === 1 ? "" : "s"} a mano. ` +
+    `Sin eso, la cuenta automática va por ${Math.max(0, contarBase(estado))}.`;
   for (const el of document.querySelectorAll("[data-cfg]")) {
     if (el === document.activeElement) continue;
     const v = c[el.dataset.cfg];
@@ -298,6 +306,7 @@ $("btnFijar").onclick = () => {
   guardar({ ajuste: v - contarBase(estado) });
   $("fijarValor").value = "";
 };
+$("btnQuitarManual").onclick = () => guardar({ ajuste: 0 });
 $("btnReset").onclick = () => {
   if (!confirm("¿Poner el contador a 0? Se borra la lista de subs de este stream.")) return;
   const total = cfg().modo === "total";
