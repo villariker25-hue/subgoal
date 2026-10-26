@@ -2,7 +2,7 @@
 // Client ID de la app registrada en https://dev.twitch.tv/console/apps
 // (tipo "Público"). La URL de redirección registrada debe ser
 // exactamente la de panel.html publicada (ver LEEME.md).
-const TWITCH_CLIENT_ID = "PON_AQUI_EL_CLIENT_ID";
+const TWITCH_CLIENT_ID = "8uyxn74nabezc8vh2wku7g221rlydb";
 
 // Firebase: misma base que gastos-casa y el overlay del casino, apartado
 // propio por código (hogares/subgoal-<código>). Solo guarda la meta, el
